@@ -13,28 +13,13 @@ class GroupSavingsInvitationsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function tokenFor(User $user): string
-    {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ])->assertStatus(200);
-
-        $token = $response->json('access_token');
-        $this->assertIsString($token);
-
-        return $token;
-    }
-
     public function test_group_creator_can_invite_user_and_user_can_accept_and_be_listed_as_member(): void
     {
         $creator = User::factory()->create();
         $invitee = User::factory()->create();
+        $randomUser = User::factory()->create();
 
-        $creatorToken = $this->tokenFor($creator);
-        $inviteeToken = $this->tokenFor($invitee);
-
-        $group = $this->withHeader('Authorization', 'Bearer '.$creatorToken)
+        $group = $this->actingAs($creator, 'api')
             ->postJson('/api/v1/group-savings', [
                 'name' => 'Trip Fund',
                 'currency' => 'NGN',
@@ -43,23 +28,47 @@ class GroupSavingsInvitationsTest extends TestCase
 
         $groupId = (int) $group->json('id');
 
-        $invite = $this->withHeader('Authorization', 'Bearer '.$creatorToken)
+        $this->actingAs($invitee, 'api')
+            ->getJson('/api/v1/group-savings/'.$groupId)
+            ->assertStatus(403);
+
+        $this->actingAs($randomUser, 'api')
+            ->postJson('/api/v1/group-savings/'.$groupId.'/invite', [
+                'invitee_ids' => [$invitee->id],
+                'expires_in_hours' => 24,
+            ])
+            ->assertStatus(403);
+
+        $invite = $this->actingAs($creator, 'api')
             ->postJson('/api/v1/group-savings/'.$groupId.'/invite', [
                 'invitee_ids' => [$invitee->id],
                 'expires_in_hours' => 24,
             ])
             ->assertStatus(201);
 
-        $this->assertIsArray($invite->json('data'));
+        $invitePayload = $invite->json();
+        $inviteList = is_array($invitePayload) && array_key_exists('data', $invitePayload) && is_array($invitePayload['data'])
+            ? $invitePayload['data']
+            : $invitePayload;
 
-        $listInvites = $this->withHeader('Authorization', 'Bearer '.$inviteeToken)
+        $this->assertIsArray($inviteList);
+        $this->assertNotEmpty($inviteList);
+
+        $listInvites = $this->actingAs($invitee, 'api')
             ->getJson('/api/v1/invitations')
             ->assertStatus(200)
-            ->assertJsonPath('data.0.status', 'pending');
+            ->assertJsonPath('0.status', 'pending');
 
-        $invitationId = (int) $listInvites->json('data.0.id');
+        $listPayload = $listInvites->json();
+        $first = is_array($listPayload) && array_key_exists('data', $listPayload) && is_array($listPayload['data'])
+            ? ($listPayload['data'][0] ?? null)
+            : ($listPayload[0] ?? null);
 
-        $this->withHeader('Authorization', 'Bearer '.$inviteeToken)
+        $this->assertIsArray($first);
+        $invitationId = (int) ($first['id'] ?? 0);
+        $this->assertGreaterThan(0, $invitationId);
+
+        $this->actingAs($invitee, 'api')
             ->postJson('/api/v1/invitations/'.$invitationId.'/accept')
             ->assertStatus(201)
             ->assertJsonPath('user.email', $invitee->email);
@@ -69,10 +78,15 @@ class GroupSavingsInvitationsTest extends TestCase
             'status' => 'accepted',
         ]);
 
-        $this->withHeader('Authorization', 'Bearer '.$inviteeToken)
+        $this->actingAs($invitee, 'api')
             ->getJson('/api/v1/group-savings/'.$groupId.'/members')
             ->assertStatus(200)
             ->assertJsonFragment(['email' => $invitee->email]);
+
+        $this->actingAs($invitee, 'api')
+            ->getJson('/api/v1/group-savings/'.$groupId)
+            ->assertStatus(200)
+            ->assertJsonPath('id', $groupId);
 
         $inv = Invitation::query()->findOrFail($invitationId);
         $this->assertSame('accepted', $inv->status);

@@ -13,27 +13,12 @@ class FriendsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function tokenFor(User $user): string
-    {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ])->assertStatus(200);
-
-        $token = $response->json('access_token');
-        $this->assertIsString($token);
-
-        return $token;
-    }
-
     public function test_can_send_and_accept_friend_request_and_list_friends(): void
     {
         $sender = User::factory()->create();
         $recipient = User::factory()->create();
 
-        $senderToken = $this->tokenFor($sender);
-
-        $send = $this->withHeader('Authorization', 'Bearer '.$senderToken)
+        $send = $this->actingAs($sender, 'api')
             ->postJson('/api/v1/friends/requests', [
                 'recipient_id' => $recipient->id,
             ])
@@ -42,19 +27,17 @@ class FriendsTest extends TestCase
 
         $friendRequestId = (int) $send->json('id');
 
-        $recipientToken = $this->tokenFor($recipient);
-
-        $this->withHeader('Authorization', 'Bearer '.$recipientToken)
+        $this->actingAs($recipient, 'api')
             ->postJson('/api/v1/friends/requests/'.$friendRequestId.'/accept')
             ->assertStatus(200)
             ->assertJsonPath('status', 'accepted');
 
-        $this->withHeader('Authorization', 'Bearer '.$senderToken)
+        $this->actingAs($sender, 'api')
             ->getJson('/api/v1/friends')
             ->assertStatus(200)
             ->assertJsonFragment(['email' => $recipient->email]);
 
-        $this->withHeader('Authorization', 'Bearer '.$recipientToken)
+        $this->actingAs($recipient, 'api')
             ->getJson('/api/v1/friends')
             ->assertStatus(200)
             ->assertJsonFragment(['email' => $sender->email]);
@@ -68,7 +51,7 @@ class FriendsTest extends TestCase
 
         $friendRequest = FriendRequest::query()->findOrFail($friendRequestId);
 
-        $this->withHeader('Authorization', 'Bearer '.$senderToken)
+        $this->actingAs($sender, 'api')
             ->deleteJson('/api/v1/friends/'.$recipient->id)
             ->assertStatus(204);
 

@@ -13,8 +13,9 @@ class RejectStatefulRequests
     public function handle(Request $request, Closure $next): Response
     {
         $cookieHeader = (string) $request->headers->get('cookie', '');
+        $hasBearerToken = $request->bearerToken() !== null;
 
-        if ($cookieHeader !== '' && str_contains($cookieHeader, 'laravel_session=')) {
+        if (! $hasBearerToken && $cookieHeader !== '' && str_contains($cookieHeader, 'laravel_session=')) {
             return response()->json([
                 'message' => 'Stateful session cookies are not supported for this API. Use the Authorization header.',
                 'error_code' => 'stateful_request_rejected',

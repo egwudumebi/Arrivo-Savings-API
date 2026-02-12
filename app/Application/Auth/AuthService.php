@@ -7,7 +7,6 @@ namespace App\Application\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\JWTGuard;
 
 class AuthService
@@ -18,7 +17,7 @@ class AuthService
             $user = new User();
             $user->name = $payload['name'];
             $user->email = $payload['email'];
-            $user->password = Hash::make($payload['password']);
+            $user->password = $payload['password'];
             $user->role = 'user';
             $user->save();
 

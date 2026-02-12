@@ -104,9 +104,14 @@ class FriendsService
             })
             ->get(['sender_id', 'recipient_id']);
 
+        $userId = (int) $user->id;
+
         $friendIds = $rows
-            ->flatMap(function (FriendRequest $fr) use ($user) {
-                return [(int) ($fr->sender_id === $user->id ? $fr->recipient_id : $fr->sender_id)];
+            ->map(function (FriendRequest $fr) use ($userId): int {
+                $senderId = (int) $fr->sender_id;
+                $recipientId = (int) $fr->recipient_id;
+
+                return $senderId === $userId ? $recipientId : $senderId;
             })
             ->unique()
             ->values()

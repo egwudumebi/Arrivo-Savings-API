@@ -13,28 +13,12 @@ class PersonalSavingsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function tokenFor(User $user): string
-    {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ])->assertStatus(200);
-
-        $token = $response->json('access_token');
-        $this->assertIsString($token);
-
-        return $token;
-    }
-
     public function test_only_owner_can_modify_personal_savings(): void
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
 
-        $ownerToken = $this->tokenFor($owner);
-        $otherToken = $this->tokenFor($other);
-
-        $create = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+        $create = $this->actingAs($owner, 'api')
             ->postJson('/api/v1/personal-savings', [
                 'name' => 'My Savings',
                 'target_amount' => 5000,
@@ -45,17 +29,17 @@ class PersonalSavingsTest extends TestCase
 
         $id = (int) $create->json('id');
 
-        $this->withHeader('Authorization', 'Bearer '.$otherToken)
+        $this->actingAs($other, 'api')
             ->putJson('/api/v1/personal-savings/'.$id, [
                 'name' => 'Hacked',
             ])
             ->assertStatus(403);
 
-        $this->withHeader('Authorization', 'Bearer '.$otherToken)
+        $this->actingAs($other, 'api')
             ->deleteJson('/api/v1/personal-savings/'.$id)
             ->assertStatus(403);
 
-        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+        $this->actingAs($owner, 'api')
             ->putJson('/api/v1/personal-savings/'.$id, [
                 'name' => 'Updated Name',
             ])
@@ -68,7 +52,7 @@ class PersonalSavingsTest extends TestCase
             'name' => 'Updated Name',
         ]);
 
-        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+        $this->actingAs($owner, 'api')
             ->deleteJson('/api/v1/personal-savings/'.$id)
             ->assertStatus(204);
 
