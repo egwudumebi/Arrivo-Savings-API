@@ -1,59 +1,277 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Arrivo Savings API (Laravel 12)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Production-grade backend API for a fintech savings MVP. Implements JWT authentication, role-based access control, personal savings and group savings modules, invitations, friends, and privileged admin/super-admin operations.
 
-## About Laravel
+## Project Overview
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+This project provides a clean, secure, and testable REST API with:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **JWT Auth** (`register`, `login`, `refresh`, `logout`, `me`)
+- **RBAC** with a single `users.role` column (`user`, `admin`, `super_admin`)
+- **Friends** requests + accept/remove/list
+- **Personal Savings** CRUD (owner-only modifications via policies)
+- **Group Savings** CRUD + invite flow + members list (creator-only management)
+- **Invitations** accept/reject + expiry handling
+- **Admin**: list users, suspend user, list all savings
+- **Super Admin**: promote admin, view system stats
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tech Stack
 
-## Learning Laravel
+- **Laravel**: 12.x
+- **PHP**: ^8.3 (project requirement)
+- **Auth**: `tymon/jwt-auth` (JWT Guard)
+- **Docs**: `darkaonline/l5-swagger` (Swagger UI)
+- **Database**: PostgreSQL (recommended), SQLite for tests
+- **Testing**: PHPUnit feature + unit tests
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Setup Instructions
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1) Install dependencies
 
-## Laravel Sponsors
+```bash
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 2) Configure environment
 
-### Premium Partners
+```bash
+copy .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 3) Database setup
 
-## Contributing
+This repo supports PostgreSQL (recommended for production) and SQLite.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+#### PostgreSQL (recommended)
 
-## Code of Conduct
+Update `.env`:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=arrivo_savings
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+```
 
-## Security Vulnerabilities
+Run migrations:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan migrate
+```
 
-## License
+#### SQLite (quick local)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Update `.env`:
+
+```env
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+```
+
+Create the SQLite file if missing:
+
+```bash
+type nul > database/database.sqlite
+php artisan migrate
+```
+
+### 4) Seed (idempotent)
+
+This project’s `DatabaseSeeder` is designed to be **idempotent**.
+
+```bash
+php artisan db:seed
+```
+
+## Environment Variables
+
+Key variables (see `.env.example` for the full list):
+
+- **App**
+  - `APP_ENV`, `APP_DEBUG`, `APP_URL`, `APP_KEY`
+- **Database**
+  - `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+- **JWT**
+  - `JWT_SECRET`
+  - `JWT_TTL` (default 15 minutes)
+  - `JWT_REFRESH_TTL` (default 20160 minutes)
+  - Optional: `JWT_PUBLIC_KEY`, `JWT_PRIVATE_KEY`, `JWT_PASSPHRASE`
+- **Swagger**
+  - `L5_SWAGGER_GENERATE_ALWAYS` (dev only)
+  - `L5_SWAGGER_USE_ABSOLUTE_PATH`
+
+## JWT Setup
+
+### Generate JWT secret
+
+If you don’t have `JWT_SECRET` set:
+
+```bash
+php artisan jwt:secret
+```
+
+Notes:
+
+- Auth guard `api` is configured to use the **JWT driver** (`config/auth.php`).
+- Access tokens are returned from `POST /api/v1/auth/login` and `POST /api/v1/auth/register`.
+
+## Running the API
+
+```bash
+php artisan serve
+```
+
+Default base URL:
+
+- `http://127.0.0.1:8000/api/v1`
+
+## Running Tests
+
+```bash
+php artisan test
+```
+
+Tests use SQLite in-memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`) via `phpunit.xml`.
+
+### Coverage (80% target)
+
+Coverage requires **Xdebug** or **PCOV** enabled in your CLI PHP.
+
+```bash
+php artisan test --coverage --min=80
+```
+
+If you see `Code coverage driver not available`, install/enable Xdebug/PCOV for the CLI PHP binary.
+
+## Swagger / OpenAPI Documentation
+
+Swagger UI route (from `config/l5-swagger.php`):
+
+- `GET /api/documentation`
+
+Generate docs (if required by your environment):
+
+```bash
+php artisan l5-swagger:generate
+```
+
+Recommended:
+
+- In development: set `L5_SWAGGER_GENERATE_ALWAYS=true`
+- In production: keep it `false` and generate docs in CI/CD.
+
+## API Endpoint List
+
+Base prefix: `/api/v1`
+
+### Auth
+
+- `POST /auth/register` (throttled)
+- `POST /auth/login` (throttled)
+- `POST /auth/refresh` (auth + throttled)
+- `POST /auth/logout` (auth)
+- `GET /auth/me` (auth)
+
+### Friends (auth)
+
+- `GET /friends`
+- `POST /friends/requests` (throttled)
+- `POST /friends/requests/{friendRequest}/accept` (throttled)
+- `DELETE /friends/{friend}` (throttled)
+
+### Personal Savings (auth)
+
+- `GET /personal-savings`
+- `POST /personal-savings`
+- `GET /personal-savings/{personalSaving}`
+- `PUT /personal-savings/{personalSaving}` (**owner-only**)
+- `DELETE /personal-savings/{personalSaving}` (**owner-only**)
+
+### Group Savings (auth)
+
+- `GET /group-savings`
+- `POST /group-savings`
+- `GET /group-savings/{groupSaving}`
+- `PUT /group-savings/{groupSaving}` (**creator-only**)
+- `DELETE /group-savings/{groupSaving}` (**creator-only**)
+- `POST /group-savings/{groupSaving}/invite` (**creator-only**, throttled)
+- `GET /group-savings/{groupSaving}/members`
+
+### Invitations (auth)
+
+- `GET /invitations` (throttled)
+- `POST /invitations/{invitation}/accept` (throttled)
+- `POST /invitations/{invitation}/reject` (throttled)
+
+### Admin (auth + `admin` middleware)
+
+- `GET /admin/users`
+- `PATCH /admin/users/{user}/suspend`
+- `GET /admin/savings`
+
+### Super Admin (auth + `super_admin` middleware)
+
+- `PATCH /super-admin/users/{user}/promote-admin`
+- `GET /super-admin/stats`
+
+## Security Decisions (What and Why)
+
+- **JWT + Stateless API**
+  - Auth is via `Authorization: Bearer <token>`.
+  - Stateful session cookies are rejected at the API boundary.
+  - Rationale: reduces CSRF exposure and simplifies horizontal scaling.
+
+- **Rate limiting**
+  - Login and invitation endpoints are throttled.
+  - Rationale: mitigates brute-force and abuse.
+
+- **Centralized JSON exception handling**
+  - Consistent error shape and safe messages in production.
+  - Rationale: prevents information leakage and improves client reliability.
+
+- **Request correlation (`X-Request-Id`) + structured logging**
+  - Every request/response includes `X-Request-Id`.
+  - Rationale: production debugging and incident triage.
+
+- **Security headers**
+  - CSP, `X-Frame-Options`, `nosniff`, etc.
+  - Rationale: reduces browser-context attack surface and clickjacking.
+
+- **Password hashing**
+  - Uses Laravel `hashed` cast + `config/hashing.php` (Argon2id default).
+  - Rationale: modern memory-hard hashing for credential safety.
+
+- **Mass assignment protection**
+  - Explicit `$fillable` in models.
+  - Rationale: prevents privilege escalation or unintended writes.
+
+## Performance Optimizations
+
+### PostgreSQL / Schema
+
+The schema uses:
+
+- **Targeted indexes** for common access patterns:
+  - `friend_requests (recipient_id, status)`, `(sender_id, status)`
+  - `personal_savings (user_id, status)`
+  - `group_savings (creator_id, status)`
+  - `invitations (invitee_id, status)`, `(group_savings_id, status)`, `(expires_at)`
+
+- **Uniqueness constraints** to prevent duplicates and keep lookups fast:
+  - `friend_requests (sender_id, recipient_id)`
+  - `group_savings_members (group_savings_id, user_id)`
+  - `invitations.token`
+
+### API behavior
+
+- Pagination is used where listing is expected (`paginate()` in controllers).
+- Rate limiting reduces abusive load.
+
+## Notes for Reviewers (Interview Context)
+
+- Service layer is used for business logic + transactions on critical flows (invites, accept flows, suspension).
+- Policies are used for ownership/management checks (personal savings owner, group creator manage).
+- Tests cover the critical security flows (auth, RBAC, ownership enforcement, invitation lifecycle).
