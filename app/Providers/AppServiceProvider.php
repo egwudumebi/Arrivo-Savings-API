@@ -37,5 +37,23 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(10)->by((string) ($userId ?? $request->ip()));
         });
+
+        RateLimiter::for('friends', function (Request $request): Limit {
+            $userId = optional($request->user('api'))->getKey();
+
+            return Limit::perMinute(30)->by((string) ($userId ?? $request->ip()));
+        });
+
+        RateLimiter::for('invites', function (Request $request): Limit {
+            $userId = optional($request->user('api'))->getKey();
+
+            return Limit::perMinute(10)->by((string) ($userId ?? $request->ip()));
+        });
+
+        RateLimiter::for('group-invite', function (Request $request): Limit {
+            $userId = optional($request->user('api'))->getKey();
+
+            return Limit::perMinute(5)->by((string) ($userId ?? $request->ip()));
+        });
     }
 }

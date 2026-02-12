@@ -27,9 +27,9 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware(['auth:api'])->group(function (): void {
         Route::prefix('friends')->group(function (): void {
             Route::get('/', [FriendsController::class, 'index']);
-            Route::post('requests', [FriendsController::class, 'sendRequest']);
-            Route::post('requests/{friendRequest}/accept', [FriendsController::class, 'acceptRequest']);
-            Route::delete('{friend}', [FriendsController::class, 'remove']);
+            Route::post('requests', [FriendsController::class, 'sendRequest'])->middleware('throttle:friends');
+            Route::post('requests/{friendRequest}/accept', [FriendsController::class, 'acceptRequest'])->middleware('throttle:friends');
+            Route::delete('{friend}', [FriendsController::class, 'remove'])->middleware('throttle:friends');
         });
 
         Route::prefix('personal-savings')->group(function (): void {
@@ -47,14 +47,14 @@ Route::prefix('v1')->group(function (): void {
             Route::put('{groupSaving}', [GroupSavingsController::class, 'update']);
             Route::delete('{groupSaving}', [GroupSavingsController::class, 'destroy']);
 
-            Route::post('{groupSaving}/invite', [GroupSavingsController::class, 'invite']);
+            Route::post('{groupSaving}/invite', [GroupSavingsController::class, 'invite'])->middleware('throttle:group-invite');
             Route::get('{groupSaving}/members', [GroupSavingsController::class, 'members']);
         });
 
         Route::prefix('invitations')->group(function (): void {
-            Route::get('/', [InvitationsController::class, 'index']);
-            Route::post('{invitation}/accept', [InvitationsController::class, 'accept']);
-            Route::post('{invitation}/reject', [InvitationsController::class, 'reject']);
+            Route::get('/', [InvitationsController::class, 'index'])->middleware('throttle:invites');
+            Route::post('{invitation}/accept', [InvitationsController::class, 'accept'])->middleware('throttle:invites');
+            Route::post('{invitation}/reject', [InvitationsController::class, 'reject'])->middleware('throttle:invites');
         });
 
         Route::get('profile', function (Request $request) {
