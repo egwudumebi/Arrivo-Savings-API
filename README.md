@@ -152,6 +152,21 @@ Swagger UI route (from `config/l5-swagger.php`):
 
 - `GET /api/documentation`
 
+### Authenticating in Swagger UI (JWT Bearer)
+
+Protected endpoints require a JWT sent via the `Authorization` header.
+
+- In Swagger UI, click **Authorize** (top right)
+- Paste your JWT token into the `bearerAuth` field
+- Swagger will send requests with:
+  - `Authorization: Bearer <token>`
+
+Tip: to persist the token across page refreshes, set:
+
+```env
+L5_SWAGGER_UI_PERSIST_AUTHORIZATION=true
+```
+
 Generate docs (if required by your environment):
 
 ```bash
