@@ -12,11 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->api(append: [
+            App\Http\Middleware\EnsureNotSuspended::class,
+        ]);
+
         $middleware->alias([
             'user' => App\Http\Middleware\UserMiddleware::class,
             'admin' => App\Http\Middleware\AdminMiddleware::class,
             'super_admin' => App\Http\Middleware\SuperAdminMiddleware::class,
             'role' => App\Http\Middleware\RoleMiddleware::class,
+            'not_suspended' => App\Http\Middleware\EnsureNotSuspended::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

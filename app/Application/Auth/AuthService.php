@@ -44,6 +44,11 @@ class AuthService
             return null;
         }
 
+        if ($user->suspended_at !== null) {
+            $this->guard()->logout();
+            abort(403, 'Account suspended.');
+        }
+
         return $this->tokenPayload((string) $token, $user);
     }
 
