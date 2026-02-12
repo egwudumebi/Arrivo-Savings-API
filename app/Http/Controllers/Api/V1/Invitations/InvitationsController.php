@@ -11,6 +11,7 @@ use App\Http\Resources\Api\V1\Invitations\InvitationResource;
 use App\Http\Resources\Api\V1\Savings\GroupMemberResource;
 use App\Models\Invitation;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 
 class InvitationsController extends Controller
@@ -30,7 +31,7 @@ class InvitationsController extends Controller
 
         $invitations = $this->invitationService->listForUser($user);
 
-        $loaded = collect($invitations)->load('inviter');
+        $loaded = EloquentCollection::make($invitations)->load('inviter');
 
         return InvitationResource::collection($loaded)->response();
     }

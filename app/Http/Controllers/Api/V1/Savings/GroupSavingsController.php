@@ -15,6 +15,7 @@ use App\Http\Resources\Api\V1\Savings\GroupSavingsResource;
 use App\Models\GroupSavings;
 use App\Models\GroupSavingsMember;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 
 class GroupSavingsController extends Controller
@@ -104,7 +105,7 @@ class GroupSavingsController extends Controller
 
         $invitations = $this->service->inviteUsers($user, $groupSaving, $inviteeIds, $expiresInHours);
 
-        $loaded = collect($invitations)->load('inviter');
+        $loaded = EloquentCollection::make($invitations)->load('inviter');
 
         return InvitationResource::collection($loaded)->response()->setStatusCode(201);
     }
